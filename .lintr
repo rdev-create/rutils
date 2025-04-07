@@ -1,0 +1,9 @@
+linters: linters_with_defaults(
+    line_length_linter(Inf),
+    commented_code_linter = NULL,
+    indentation_linter(
+      indent = 2L,
+      hanging_indent_style = "never"
+    ),
+    object_length_linter(length = Inf)
+  )

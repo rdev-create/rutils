@@ -1,0 +1,23 @@
+<urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
+<url><loc>/404.html</loc></url>
+<url><loc>/LICENSE-text.html</loc></url>
+<url><loc>/LICENSE.html</loc></url>
+<url><loc>/authors.html</loc></url>
+<url><loc>/index.html</loc></url>
+<url><loc>/reference/WebDetailsCache.html</loc></url>
+<url><loc>/reference/WebDetailsCacheManager.html</loc></url>
+<url><loc>/reference/atomic_saveRDS.html</loc></url>
+<url><loc>/reference/compare_json_lists.html</loc></url>
+<url><loc>/reference/compress_rds_files.html</loc></url>
+<url><loc>/reference/convert_myrds_to_json.html</loc></url>
+<url><loc>/reference/convert_rds_to_json.html</loc></url>
+<url><loc>/reference/fetch_web_content.html</loc></url>
+<url><loc>/reference/fetch_web_content_as_object.html</loc></url>
+<url><loc>/reference/index.html</loc></url>
+<url><loc>/reference/library_install.html</loc></url>
+<url><loc>/reference/log_error_with_status.html</loc></url>
+<url><loc>/reference/log_info_with_status.html</loc></url>
+<url><loc>/reference/make_dir_if_not_exist.html</loc></url>
+<url><loc>/reference/run_parallel_tasks.html</loc></url>
+</urlset>
+
