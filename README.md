@@ -1,6 +1,6 @@
 # rutil: an R library filled with handy wrappers around common R library functions
 
-## [Documentation](https://rdev-create.github.io/rutils/)
+## [API Documentation](https://rdev-create.github.io/rutils/reference/index.html)
 
 ## Things to remember
 
