@@ -66,7 +66,7 @@ log_info_with_status <- function(finished_count, total_count, message) {
   pct_done <- 0
   if (is.na(total_count)) total_count <- 0
   if (total_count > 0) { # avoid division by zero
-    pct_done <- round((finished_count / total_count) * 100, 1)
+    pct_done <- floor((finished_count / total_count) * 1000) / 10
   }
   status <- sprintf("[%2d of %2d: %5.1f%%]", finished_count, total_count, pct_done) # nolint: object_usage_linter.
   formatted_message <- glue::glue(message, .envir = parent.frame()) # nolint: object_usage_linter.
