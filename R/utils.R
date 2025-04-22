@@ -507,6 +507,192 @@ compress_rds_files <- function(dir_path) {
   run_parallel_tasks("compression of RDS files in {dir_path}", rds_files, compress_file)
 }
 
+#' Stop if a condition is TRUE, with a custom error message
+#'
+#' @param condition A logical condition to test.
+#' @param message A string message to show if the condition is TRUE.
+#' @return None. Stops execution with an error if the condition is TRUE.
+#' @examples
+#' stopif(x > 10, "x is too large")
+#'
+#' @export
+stopif <- function(condition, message = "Condition failed") {
+  if (isTRUE(condition)) {
+    stop(message, call. = FALSE)
+  }
+}
+
+atomic_write_json <- function(data, path, pretty = TRUE, auto_unbox = TRUE) {
+  temp_file <- paste0(path, ".tmp")
+  jsonlite::write_json(data, path = temp_file, pretty = pretty, auto_unbox = auto_unbox)
+
+  if (!file.rename(temp_file, path)) {
+    stop("Failed to rename temp file to target file.")
+  }
+}
+
+log_info_with_status <- function(finished_count, total_count, message) {
+  # Calculate percent complete
+  pct_done <- 0
+  if (is.na(total_count)) total_count <- 0
+  if (total_count > 0) { # avoid division by zero
+    pct_done <- floor((finished_count / total_count) * 1000) / 10
+  }
+  status <- sprintf("[%2d of %2d: %5.1f%%]", finished_count, total_count, pct_done) # nolint: object_usage_linter.
+  formatted_message <- glue::glue(message, .envir = parent.frame()) # nolint: object_usage_linter.
+  logger::log_info("{status} {formatted_message}")
+}
+
+CacheCountBatch <- R6::R6Class("CacheCountBatch", # nolint: object_name_linter
+  public = list(
+    cache_name = "",
+    cache_dir = "",
+    cache_filename = "",
+    get_count_func = NULL,
+    get_batch_func = NULL,
+    batch_size = 300,
+    sleep_between_calls = 0.1,
+    cached_list_results = c(),
+    initialize = function(cache_name, cache_dir, get_count_func, get_batch_func, batch_size, sleep_between_calls) {
+      self$cache_name <- cache_name
+      self$cache_dir <- cache_dir
+      self$get_count_func <- get_count_func
+      self$get_batch_func <- get_batch_func
+      self$batch_size <- batch_size
+      self$sleep_between_calls <- sleep_between_calls
+      self$cache_filename <- file.path(self$cache_dir, paste0(self$cache_name, "_cache", ".json"))
+      rutils::make_dir_if_not_exist(self$cache_dir)
+    },
+    init_cache = function() {
+      total_results <- self$get_count_func()
+
+      if (file.exists(self$cache_filename)) {
+        self$cached_list_results <- jsonlite::read_json(self$cache_filename, simplifyVector = FALSE)
+        logger::log_info("Loaded {length(self$cached_list_results)} cached entries for '{self$cache_name}'")
+      } else {
+        logger::log_info("Cache files for '{self$cache_name}' do not exist. Skipping load.")
+      }
+
+      if (length(self$cached_list_results) == total_results) {
+        logger::log_info("Cache is already complete for '{self$cache_name}'")
+        return()
+      } else {
+        logger::log_info("Cached data size not same as new data size.  Cleared cached data for '{self$cache_name}'")
+        self$cached_list_results <- c()
+      }
+
+      # Loop to fetch results in batches
+      for (start in seq(1, total_results, by = self$batch_size)) {
+        batch_results <- retry_on_failure(retry_attempts = 3, delay = self$sleep_between_calls, func_to_try = self$get_batch_func, self$batch_size, start)
+
+        self$cached_list_results <- c(self$cached_list_results, batch_results)
+
+        # Sleep to avoid overloading NCBI servers
+        log_info_with_status(length(self$cached_list_results), total_results, "Cache updated for '{self$cache_name}'")
+        Sys.sleep(self$sleep_between_calls)
+      }
+
+      stopif(length(self$cached_list_results) != total_results, "Cached data size does not match expected total results.")
+
+      # write the cache to disk
+      log_info_with_status(total_results, total_results, "Cache for '{self$cache_name}' has been written to disk")
+      atomic_write_json(self$cached_list_results, self$cache_filename, pretty = TRUE, auto_unbox = TRUE)
+    },
+    get_cached_list = function() {
+      stopif(length(self$cached_list_results) == 0, "Cache is empty. Please initialize the cache first.")
+      self$cached_list_results
+    },
+    is_key_in_cached_list = function(item_key) {
+      # assume cache was already loaded in do_cache_list
+      item_key %in% names(self$cached_list_results)
+    },
+    get_cached_item = function(item_key) {
+      # assume cache was already loaded in do_cache_list
+      self$cached_list_results[[item_key]]
+    }
+  )
+)
+
+CacheListBatch <- R6::R6Class("CacheListBatch", # nolint: object_name_linter, cyclocomp_linter.
+  public = list(
+    cache_name = "",
+    cache_dir = "",
+    cache_filename = "",
+    list_of_keys_to_cache = NULL,
+    get_batch_func = NULL,
+    batch_size = 300,
+    sleep_between_calls = 0.1,
+    cached_list_results = c(),
+    initialize = function(cache_name, cache_dir, list_of_keys_to_cache, get_batch_func, batch_size, sleep_between_calls) {
+      self$cache_name <- cache_name
+      self$cache_dir <- cache_dir
+      self$list_of_keys_to_cache <- list_of_keys_to_cache
+      self$get_batch_func <- get_batch_func
+      self$batch_size <- batch_size
+      self$sleep_between_calls <- sleep_between_calls
+      self$cache_filename <- file.path(self$cache_dir, paste0(self$cache_name, "_cache", ".json"))
+      rutils::make_dir_if_not_exist(self$cache_dir)
+    },
+    init_cache = function() {
+      if (file.exists(self$cache_filename)) {
+        self$cached_list_results <- jsonlite::read_json(self$cache_filename, simplifyVector = FALSE)
+        logger::log_info("Loaded {length(self$cached_list_results)} cached entries for '{self$cache_name}'")
+      } else {
+        logger::log_info("Cache files for '{self$cache_name}' do not exist. Skipping load.")
+      }
+
+      # Remove already cached keys from the list
+      missing_list_of_keys_to_cache <- setdiff(self$list_of_keys_to_cache, names(self$cached_list_results))
+
+      total_missing_results <- length(missing_list_of_keys_to_cache)
+      if (total_missing_results == 0) {
+        logger::log_info("Cache is already complete for '{self$cache_name}'")
+        return()
+      }
+
+      # Loop through each batch
+      for (start in seq(1, total_missing_results, by = self$batch_size)) {
+        # Get the current batch of gene IDs
+        current_batch <- missing_list_of_keys_to_cache[start:min(start + self$batch_size - 1, total_missing_results)]
+
+        logger::log_info("Fetching {length(current_batch)} entries for '{self$cache_name}'")
+
+        results <- retry_on_failure(retry_attempts = 3, delay = self$sleep_between_calls, func_to_try = self$get_batch_func, current_batch)
+
+        # ensure each requested key was returned
+        missing_batch_keys <- setdiff(current_batch, names(results))
+        stopif(length(missing_batch_keys) > 0, paste0("Missing batch entries for keys: ", paste(missing_batch_keys, collapse = ", ")))
+
+        self$cached_list_results <- c(self$cached_list_results, results)
+
+        # todo: write cache to disk
+        atomic_write_json(self$cached_list_results, self$cache_filename, pretty = TRUE, auto_unbox = TRUE)
+        num_remaining_keys_to_get <- length(self$list_of_keys_to_cache) - length(setdiff(self$list_of_keys_to_cache, names(self$cached_list_results)))
+        log_info_with_status(num_remaining_keys_to_get, length(self$list_of_keys_to_cache), "Cache updated for '{self$cache_name}'")
+      }
+
+      missing_keys <- setdiff(self$list_of_keys_to_cache, names(self$cached_list_results))
+      stopif(length(missing_keys) > 0, paste0("Missing cache entries in '{self$cache_name}' for keys: ", paste(missing_keys, collapse = ", ")))
+
+      logger::log_info("Cache is complete for '{self$cache_name}'")
+    },
+    get_cached_list = function() {
+      if (length(self$cached_list_results) == 0) {
+        stop("Cache is empty. Please initialize the cache first.")
+      }
+      self$cached_list_results
+    },
+    is_key_in_cached_list = function(item_key) {
+      # assume cache was already loaded in do_cache_list
+      item_key %in% names(self$cached_list_results)
+    },
+    get_cached_item = function(item_key) {
+      # assume cache was already loaded in do_cache_list
+      self$cached_list_results[[item_key]]
+    }
+  )
+)
+
 #' Compare two JSON files containing lists
 #'
 #' @param file1 Path to the first JSON file.
@@ -569,28 +755,75 @@ compare_json_lists <- function(file1, file2) {
   )
 }
 
-#' Fetch web content as text
+#' Executes a function repeatedly until it succeeds or the maximum number of attempts is reached.
 #'
-#' @param url The URL to fetch content from.
-#' @param query A list of query parameters.
-#' @return The response content as text, or NULL if the fetch failed.
+#' @param retry_attempts The maximum number of attempts to execute the function.
+#' @param delay The time in seconds to wait between attempts.
+#' @param func_to_try A function (with no arguments) that is attempted.
+#'
+#' @return The result of the function if a successful execution occurs, or NULL if all attempts fail.
+#' @examples
+#' retry_on_failure(3, 1, function() {
+#'   some_unreliable_function()
+#' })
 #' @export
-fetch_web_content <- function(url, query = list()) {
-  res <- httr::GET(url, query = query)
-  if (httr::http_error(res)) {
-    logger::log_error("Failed to fetch content from {url}. Status: {status_code(res)}")
-    return(NULL)
+retry_on_failure <- function(retry_attempts, delay, func_to_try, ...) {
+  attempt <- 1
+  result <- NULL
+
+  # Loop to retry the function until success or maximum attempts reached.
+  while (attempt <= retry_attempts) {
+    tryCatch(
+      {
+        result <- func_to_try(...) # Attempt to execute the provided function.
+        break # Exit loop if the function executes successfully.
+      },
+      error = function(e) {
+        Sys.sleep(delay) # Wait for the specified delay before retrying.
+      }
+    )
+    attempt <- attempt + 1
   }
-  httr::content(res, as = "text", encoding = "UTF-8")
+
+  # Return the result from the first successful attempt, or NULL if all attempts fail.
+  result
 }
 
-#' Fetch web content and convert it to an R object
+#' Fetch web content as plain text with retry support
 #'
-#' @param url The URL to fetch content from.
-#' @param query A list of query parameters.
-#' @return The parsed JSON object, or NULL if the fetch failed.
+#' This function sends an HTTP GET request to a specified URL with optional query parameters.
+#' If the request fails, it will retry up to the number of attempts specified.
+#'
+#' @param url A character string specifying the URL to fetch.
+#' @param query A named list of query parameters to include in the request (default is an empty list).
+#' @param retry_attempts An integer. Number of retry attempts on failure (default is 0).
+#' @param delay A numeric. Number of seconds to wait between retries (default is 0).
+#'
+#' @return A character string with the raw response content, or NULL if the request fails.
 #' @export
-fetch_web_content_as_object <- function(url, query = list()) {
+fetch_web_content <- function(url, query = list(), retry_attempts = 0, delay = 0) {
+  retry_on_failure(retry_attempts = retry_attempts, delay = delay, func_to_try = function() {
+    res <- httr::GET(url, query = query)
+    if (httr::http_error(res)) {
+      logger::log_error("Failed to fetch content from {url}. Status: {status_code(res)}")
+      stop()
+    }
+    httr::content(res, as = "text", encoding = "UTF-8")
+  })
+}
+
+#' Fetch and parse web content as a JSON object
+#'
+#' This function fetches content from a URL and parses it as a JSON object.
+#'
+#' @param url A character string specifying the URL to fetch.
+#' @param query A named list of query parameters to include in the request (default is an empty list).
+#' @param retry_attempts An integer. Number of retry attempts on failure (default is 0).
+#' @param delay A numeric. Number of seconds to wait between retries (default is 0).
+#'
+#' @return A parsed JSON object (as a list), or NULL if the fetch or parsing fails.
+#' @export
+fetch_web_content_as_object <- function(url, query = list(), retry_attempts = 0, delay = 0) {
   page_content <- fetch_web_content(url, query)
   if (is.null(page_content)) {
     return(NULL)
