@@ -512,9 +512,6 @@ compress_rds_files <- function(dir_path) {
 #' @param condition A logical condition to test.
 #' @param message A string message to show if the condition is TRUE.
 #' @return None. Stops execution with an error if the condition is TRUE.
-#' @examples
-#' stopif(x > 10, "x is too large")
-#'
 #' @export
 stopif <- function(condition, message = "Condition failed") {
   if (isTRUE(condition)) {

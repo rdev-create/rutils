@@ -4,9 +4,12 @@
 <url><loc>/LICENSE.html</loc></url>
 <url><loc>/authors.html</loc></url>
 <url><loc>/index.html</loc></url>
+<url><loc>/reference/CacheCountBatch.html</loc></url>
+<url><loc>/reference/CacheListBatch.html</loc></url>
 <url><loc>/reference/WebDetailsCache.html</loc></url>
 <url><loc>/reference/WebDetailsCacheManager.html</loc></url>
 <url><loc>/reference/atomic_saveRDS.html</loc></url>
+<url><loc>/reference/atomic_write_json.html</loc></url>
 <url><loc>/reference/compare_json_lists.html</loc></url>
 <url><loc>/reference/compress_rds_files.html</loc></url>
 <url><loc>/reference/convert_myrds_to_json.html</loc></url>
@@ -18,6 +21,8 @@
 <url><loc>/reference/log_error_with_status.html</loc></url>
 <url><loc>/reference/log_info_with_status.html</loc></url>
 <url><loc>/reference/make_dir_if_not_exist.html</loc></url>
+<url><loc>/reference/retry_on_failure.html</loc></url>
 <url><loc>/reference/run_parallel_tasks.html</loc></url>
+<url><loc>/reference/stopif.html</loc></url>
 </urlset>
 

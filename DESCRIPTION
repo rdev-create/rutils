@@ -1,6 +1,6 @@
 Package: rutils
 Title: Some useful R utilities
-Version: 0.0.0.9000
+Version: 0.0.0.9001
 Authors@R:
     person("Rdev", "Create", , "rdev.create@gmail.com", role = c("aut", "cre"))
 Description: Provides some useful R utilities and helpers to simplify use of R.

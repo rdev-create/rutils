@@ -2,18 +2,22 @@
 % Please edit documentation in R/utils.R
 \name{fetch_web_content_as_object}
 \alias{fetch_web_content_as_object}
-\title{Fetch web content and convert it to an R object}
+\title{Fetch and parse web content as a JSON object}
 \usage{
-fetch_web_content_as_object(url, query = list())
+fetch_web_content_as_object(url, query = list(), retry_attempts = 0, delay = 0)
 }
 \arguments{
-\item{url}{The URL to fetch content from.}
+\item{url}{A character string specifying the URL to fetch.}
 
-\item{query}{A list of query parameters.}
+\item{query}{A named list of query parameters to include in the request (default is an empty list).}
+
+\item{retry_attempts}{An integer. Number of retry attempts on failure (default is 0).}
+
+\item{delay}{A numeric. Number of seconds to wait between retries (default is 0).}
 }
 \value{
-The parsed JSON object, or NULL if the fetch failed.
+A parsed JSON object (as a list), or NULL if the fetch or parsing fails.
 }
 \description{
-Fetch web content and convert it to an R object
+This function fetches content from a URL and parses it as a JSON object.
 }

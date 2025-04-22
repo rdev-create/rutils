@@ -5,6 +5,8 @@
 \title{Log an informational message with status information}
 \usage{
 log_info_with_status(finished_count, total_count, message)
+
+log_info_with_status(finished_count, total_count, message)
 }
 \arguments{
 \item{finished_count}{The number of completed tasks.}
@@ -14,5 +16,5 @@ log_info_with_status(finished_count, total_count, message)
 \item{message}{A glue-formatted message to log.}
 }
 \description{
-Log an informational message with status information
+Calculates and logs the progress status and a formatted informational message.
 }

@@ -33,7 +33,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="index.html">rutils</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.0.0.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.0.0.9001</span>
       </span>
     </div>
 
@@ -66,8 +66,8 @@
 <div class="page-header"><h1 id="rutil-an-r-library-filled-with-handy-wrappers-around-common-r-library-functions">rutil: an R library filled with handy wrappers around common R library functions<a class="anchor" aria-label="anchor" href="#rutil-an-r-library-filled-with-handy-wrappers-around-common-r-library-functions"></a>
 </h1></div>
 <div class="section level2">
-<h2 id="documentation">
-<a href="https://rdev-create.github.io/rutils/" class="external-link">Documentation</a><a class="anchor" aria-label="anchor" href="#documentation"></a>
+<h2 id="api-documentation">
+<a href="https://rdev-create.github.io/rutils/reference/index.html" class="external-link">API Documentation</a><a class="anchor" aria-label="anchor" href="#api-documentation"></a>
 </h2>
 </div>
 <div class="section level2">
@@ -77,19 +77,29 @@
 <li>Build web content:
 <ul>
 <li><code>brew install pandoc</code></li>
-<li><code><a href="https://pkgdown.r-lib.org/reference/build_site_github_pages.html" class="external-link">pkgdown::build_site_github_pages()</a></code></li>
 </ul>
 </li>
+</ul>
+</div>
+<div class="section level2">
+<h2 id="to-build-a-new-version">To build a new version<a class="anchor" aria-label="anchor" href="#to-build-a-new-version"></a>
+</h2>
+<ul>
+<li>Increment the Version field in DESCRIPTION file</li>
 <li>Build package:
 <ul>
 <li><code><a href="https://devtools.r-lib.org/reference/document.html" class="external-link">devtools::document()</a></code></li>
+<li><code><a href="https://pkgdown.r-lib.org/reference/build_site_github_pages.html" class="external-link">pkgdown::build_site_github_pages()</a></code></li>
 <li><code><a href="https://devtools.r-lib.org/reference/build.html" class="external-link">devtools::build()</a></code></li>
 <li><code><a href="https://devtools.r-lib.org/reference/check.html" class="external-link">devtools::check()</a></code></li>
+<li>commit all changes</li>
+<li><code>git tag -a v0.0.0.9001 -m "rutils v0.0.0.9001"</code></li>
+<li><code>git push origin main --tags</code></li>
 </ul>
 </li>
 <li>Users who want to use this library:
 <ul>
-<li><code>devtools::install_github("rdev-create/rutils")</code></li>
+<li><code>devtools::install_github("rdev-create/rutils@v0.0.0.9001")</code></li>
 <li><code><a href="https://github.com/rdev-create/rutils" class="external-link">library(rutils)</a></code></li>
 </ul>
 </li>

@@ -2,18 +2,23 @@
 % Please edit documentation in R/utils.R
 \name{fetch_web_content}
 \alias{fetch_web_content}
-\title{Fetch web content as text}
+\title{Fetch web content as plain text with retry support}
 \usage{
-fetch_web_content(url, query = list())
+fetch_web_content(url, query = list(), retry_attempts = 0, delay = 0)
 }
 \arguments{
-\item{url}{The URL to fetch content from.}
+\item{url}{A character string specifying the URL to fetch.}
 
-\item{query}{A list of query parameters.}
+\item{query}{A named list of query parameters to include in the request (default is an empty list).}
+
+\item{retry_attempts}{An integer. Number of retry attempts on failure (default is 0).}
+
+\item{delay}{A numeric. Number of seconds to wait between retries (default is 0).}
 }
 \value{
-The response content as text, or NULL if the fetch failed.
+A character string with the raw response content, or NULL if the request fails.
 }
 \description{
-Fetch web content as text
+This function sends an HTTP GET request to a specified URL with optional query parameters.
+If the request fails, it will retry up to the number of attempts specified.
 }
