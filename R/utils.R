@@ -522,6 +522,16 @@ stopif <- function(condition, message = "Condition failed") {
   }
 }
 
+##' Atomically write JSON content to a file
+#'
+#' Writes an R object as JSON to a temporary file and then renames it to the target path,
+#' ensuring that the write operation is atomic.
+#'
+#' @param data The R object to write as JSON.
+#' @param path The file path where the JSON should be saved.
+#' @param pretty Logical; if TRUE, the JSON output will be pretty-printed. Default is TRUE.
+#' @param auto_unbox Logical; if TRUE, single-element vectors will be unboxed. Default is TRUE.
+#' @export
 atomic_write_json <- function(data, path, pretty = TRUE, auto_unbox = TRUE) {
   temp_file <- paste0(path, ".tmp")
   jsonlite::write_json(data, path = temp_file, pretty = pretty, auto_unbox = auto_unbox)
@@ -531,6 +541,14 @@ atomic_write_json <- function(data, path, pretty = TRUE, auto_unbox = TRUE) {
   }
 }
 
+##' Log an informational message with status information
+#'
+#' Calculates and logs the progress status and a formatted informational message.
+#'
+#' @param finished_count The number of completed tasks.
+#' @param total_count The total number of tasks.
+#' @param message A glue-formatted message to log.
+#' @export
 log_info_with_status <- function(finished_count, total_count, message) {
   # Calculate percent complete
   pct_done <- 0
@@ -543,6 +561,20 @@ log_info_with_status <- function(finished_count, total_count, message) {
   logger::log_info("{status} {formatted_message}")
 }
 
+##'
+#' CacheCountBatch class
+#'
+#' A class for caching results in count-based batches, storing them as JSON files.
+#'
+#' @field cache_name Name of the cache.
+#' @field cache_dir Directory for cache files.
+#' @field cache_filename File path for the cached JSON.
+#' @field get_count_func Function to get total count of items.
+#' @field get_batch_func Function to fetch a batch of items.
+#' @field batch_size Number of items per batch.
+#' @field sleep_between_calls Delay in seconds between calls.
+#' @field cached_list_results Cached list of results.
+#' @export
 CacheCountBatch <- R6::R6Class("CacheCountBatch", # nolint: object_name_linter
   public = list(
     cache_name = "",
@@ -553,6 +585,15 @@ CacheCountBatch <- R6::R6Class("CacheCountBatch", # nolint: object_name_linter
     batch_size = 300,
     sleep_between_calls = 0.1,
     cached_list_results = c(),
+    #' @description Initialize a new CacheCountBatch object
+    #'
+    #' @param cache_name Name of the cache.
+    #' @param cache_dir Directory to store cache files.
+    #' @param get_count_func Function returning total number of items.
+    #' @param get_batch_func Function fetching a batch of items.
+    #' @param batch_size Number of items per batch.
+    #' @param sleep_between_calls Delay in seconds between calls.
+    #' @return A new CacheCountBatch object.
     initialize = function(cache_name, cache_dir, get_count_func, get_batch_func, batch_size, sleep_between_calls) {
       self$cache_name <- cache_name
       self$cache_dir <- cache_dir
@@ -563,6 +604,9 @@ CacheCountBatch <- R6::R6Class("CacheCountBatch", # nolint: object_name_linter
       self$cache_filename <- file.path(self$cache_dir, paste0(self$cache_name, "_cache", ".json"))
       rutils::make_dir_if_not_exist(self$cache_dir)
     },
+    #' @description Initialize or refresh the cache by fetching and storing data.
+    #'
+    #' @return None. Populates the cache and writes JSON file to disk.
     init_cache = function() {
       total_results <- self$get_count_func()
 
@@ -598,14 +642,25 @@ CacheCountBatch <- R6::R6Class("CacheCountBatch", # nolint: object_name_linter
       log_info_with_status(total_results, total_results, "Cache for '{self$cache_name}' has been written to disk")
       atomic_write_json(self$cached_list_results, self$cache_filename, pretty = TRUE, auto_unbox = TRUE)
     },
+    #' @description Retrieve the full cached results.
+    #'
+    #' @return A list of cached results.
     get_cached_list = function() {
       stopif(length(self$cached_list_results) == 0, "Cache is empty. Please initialize the cache first.")
       self$cached_list_results
     },
+    #' @description Check if a key exists in the cached list.
+    #'
+    #' @param item_key The key to check.
+    #' @return TRUE if the key is in cache; FALSE otherwise.
     is_key_in_cached_list = function(item_key) {
       # assume cache was already loaded in do_cache_list
       item_key %in% names(self$cached_list_results)
     },
+    #' @description Retrieve a specific cached item by key.
+    #'
+    #' @param item_key The key of the item to retrieve.
+    #' @return The cached item corresponding to the key.
     get_cached_item = function(item_key) {
       # assume cache was already loaded in do_cache_list
       self$cached_list_results[[item_key]]
@@ -613,6 +668,20 @@ CacheCountBatch <- R6::R6Class("CacheCountBatch", # nolint: object_name_linter
   )
 )
 
+##'
+#' CacheListBatch class
+#'
+#' A class for caching results in list-based batches, storing them as JSON files.
+#'
+#' @field cache_name Name of the cache.
+#' @field cache_dir Directory for cache files.
+#' @field cache_filename File path for the cached JSON.
+#' @field list_of_keys_to_cache List of keys to cache.
+#' @field get_batch_func Function to fetch a batch of items for given keys.
+#' @field batch_size Number of items per batch.
+#' @field sleep_between_calls Delay in seconds between calls.
+#' @field cached_list_results Cached list of results.
+#' @export
 CacheListBatch <- R6::R6Class("CacheListBatch", # nolint: object_name_linter, cyclocomp_linter.
   public = list(
     cache_name = "",
@@ -623,6 +692,15 @@ CacheListBatch <- R6::R6Class("CacheListBatch", # nolint: object_name_linter, cy
     batch_size = 300,
     sleep_between_calls = 0.1,
     cached_list_results = c(),
+    #' @description Initialize a new CacheListBatch object
+    #'
+    #' @param cache_name Name of the cache.
+    #' @param cache_dir Directory to store cache files.
+    #' @param list_of_keys_to_cache List of keys to cache.
+    #' @param get_batch_func Function to fetch a batch of items for given keys.
+    #' @param batch_size Number of items per batch.
+    #' @param sleep_between_calls Delay in seconds between calls.
+    #' @return A new CacheListBatch object.
     initialize = function(cache_name, cache_dir, list_of_keys_to_cache, get_batch_func, batch_size, sleep_between_calls) {
       self$cache_name <- cache_name
       self$cache_dir <- cache_dir
@@ -633,6 +711,9 @@ CacheListBatch <- R6::R6Class("CacheListBatch", # nolint: object_name_linter, cy
       self$cache_filename <- file.path(self$cache_dir, paste0(self$cache_name, "_cache", ".json"))
       rutils::make_dir_if_not_exist(self$cache_dir)
     },
+    #' @description Initialize or refresh the cache by fetching and storing data for specified keys.
+    #'
+    #' @return None. Populates the cache and writes JSON file to disk.
     init_cache = function() {
       if (file.exists(self$cache_filename)) {
         self$cached_list_results <- jsonlite::read_json(self$cache_filename, simplifyVector = FALSE)
@@ -676,16 +757,27 @@ CacheListBatch <- R6::R6Class("CacheListBatch", # nolint: object_name_linter, cy
 
       logger::log_info("Cache is complete for '{self$cache_name}'")
     },
+    #' @description Retrieve the full cached results.
+    #'
+    #' @return A list of cached results.
     get_cached_list = function() {
       if (length(self$cached_list_results) == 0) {
         stop("Cache is empty. Please initialize the cache first.")
       }
       self$cached_list_results
     },
+    #' @description Check if a key exists in the cached list.
+    #'
+    #' @param item_key The key to check.
+    #' @return TRUE if the key is in cache; FALSE otherwise.
     is_key_in_cached_list = function(item_key) {
       # assume cache was already loaded in do_cache_list
       item_key %in% names(self$cached_list_results)
     },
+    #' @description Retrieve a specific cached item by key.
+    #'
+    #' @param item_key The key of the item to retrieve.
+    #' @return The cached item corresponding to the key.
     get_cached_item = function(item_key) {
       # assume cache was already loaded in do_cache_list
       self$cached_list_results[[item_key]]
