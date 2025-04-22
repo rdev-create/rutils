@@ -847,18 +847,19 @@ compare_json_lists <- function(file1, file2) {
   )
 }
 
-#' Executes a function repeatedly until it succeeds or the maximum number of attempts is reached.
-#'
-#' @param retry_attempts The maximum number of attempts to execute the function.
-#' @param delay The time in seconds to wait between attempts.
-#' @param func_to_try A function (with no arguments) that is attempted.
-#'
-#' @return The result of the function if a successful execution occurs, or NULL if all attempts fail.
-#' @examples
-#' retry_on_failure(3, 1, function() {
-#'   some_unreliable_function()
-#' })
-#' @export
+ #' Executes a function repeatedly until it succeeds or the maximum number of attempts is reached.
+ #'
+ #' @param retry_attempts The maximum number of attempts to execute the function.
+ #' @param delay The time in seconds to wait between attempts.
+ #' @param func_to_try A function (with no arguments) that is attempted.
+ #' @param ... Additional arguments to pass to `func_to_try`.
+ #'
+ #' @return The result of the function if a successful execution occurs, or NULL if all attempts fail.
+ #' @examples
+ #' retry_on_failure(3, 1, function() {
+ #'   some_unreliable_function()
+ #' })
+ #' @export
 retry_on_failure <- function(retry_attempts, delay, func_to_try, ...) {
   attempt <- 1
   result <- NULL
